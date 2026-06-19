@@ -1,5 +1,3 @@
-import CryptoJS from "crypto-js";
-
 const JSON_LD_CONTEXT = "https://schema.org/";
 
 export function createCredentialPayload({ studentAddress, studentName, degree, gpa }) {
@@ -23,23 +21,128 @@ export function buildTranscriptInputs({ gpa, salt }) {
   return { transcriptData, secretSalt };
 }
 
-export function encryptCredential(payload, decryptionKey) {
-  if (!decryptionKey || !decryptionKey.trim()) {
-    throw new Error("A decryption key is required");
-  }
-  const ciphertext = CryptoJS.AES.encrypt(JSON.stringify(payload), decryptionKey).toString();
-  return ciphertext;
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
+const ALGORITHM = "AES-GCM";
+const SALT_SIZE = 16;
+const IV_SIZE = 12;
+
+async function getAesKey(password, salt) {
+  const baseKey = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveKey"],
+  );
+
+  return crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt,
+      iterations: 120000,
+      hash: "SHA-256",
+    },
+    baseKey,
+    { name: ALGORITHM, length: 256 },
+    false,
+    ["encrypt", "decrypt"],
+  );
 }
 
-export function decryptCredential(ciphertext, decryptionKey) {
+function toBase64(bytes) {
+  const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
+  return btoa(binary);
+}
+
+function fromBase64(base64) {
+  const binary = atob(base64);
+  const output = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    output[i] = binary.charCodeAt(i);
+  }
+  return output;
+}
+
+function assertBrowserCryptoAvailable() {
+  if (!globalThis.crypto?.subtle) {
+    throw new Error("Browser crypto API is not available.");
+  }
+}
+
+export async function encryptCredential(payload, decryptionKey) {
   if (!decryptionKey || !decryptionKey.trim()) {
     throw new Error("A decryption key is required");
   }
-  const bytes = CryptoJS.AES.decrypt(ciphertext, decryptionKey);
-  const raw = bytes.toString(CryptoJS.enc.Utf8);
-  if (!raw) throw new Error("Invalid key or corrupted payload");
-  const parsed = JSON.parse(raw);
-  return parsed;
+
+  assertBrowserCryptoAvailable();
+
+  const plainBytes = encoder.encode(JSON.stringify(payload));
+  const salt = crypto.getRandomValues(new Uint8Array(SALT_SIZE));
+  const iv = crypto.getRandomValues(new Uint8Array(IV_SIZE));
+  const key = await getAesKey(decryptionKey, salt);
+  const ciphertext = await crypto.subtle.encrypt(
+    {
+      name: ALGORITHM,
+      iv,
+    },
+    key,
+    plainBytes,
+  );
+
+  return JSON.stringify({
+    v: 1,
+    alg: ALGORITHM,
+    salt: toBase64(salt),
+    iv: toBase64(iv),
+    data: toBase64(new Uint8Array(ciphertext)),
+  });
+}
+
+export async function decryptCredential(ciphertext, decryptionKey) {
+  if (!decryptionKey || !decryptionKey.trim()) {
+    throw new Error("A decryption key is required");
+  }
+  if (!ciphertext || typeof ciphertext !== "string") {
+    throw new Error("Payload ciphertext is missing");
+  }
+
+  assertBrowserCryptoAvailable();
+
+  let parsed;
+  try {
+    parsed = JSON.parse(ciphertext);
+  } catch {
+    throw new Error("Credential payload format is unsupported");
+  }
+
+  if (!parsed || parsed.alg !== ALGORITHM || !parsed.salt || !parsed.iv || !parsed.data) {
+    throw new Error("Invalid encrypted credential format");
+  }
+
+  const salt = fromBase64(parsed.salt);
+  const iv = fromBase64(parsed.iv);
+  const ciphertextBytes = fromBase64(parsed.data);
+  const key = await getAesKey(decryptionKey, salt);
+  const plainBytes = await crypto.subtle.decrypt(
+    {
+      name: ALGORITHM,
+      iv,
+    },
+    key,
+    ciphertextBytes,
+  );
+
+  const raw = decoder.decode(plainBytes);
+  if (!raw) {
+    throw new Error("Invalid key or corrupted payload");
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new Error("Invalid credential payload");
+  }
 }
 
 export function payloadToStorageBundle({

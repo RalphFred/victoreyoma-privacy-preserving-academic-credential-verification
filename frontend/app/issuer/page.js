@@ -123,7 +123,7 @@ export default function IssuerPortal() {
         degree,
         gpa,
       });
-      const ciphertext = encryptCredential(credentialPayload, secretKey);
+      const ciphertext = await encryptCredential(credentialPayload, secretKey);
       const bundle = payloadToStorageBundle({
         studentAddress,
         studentName,

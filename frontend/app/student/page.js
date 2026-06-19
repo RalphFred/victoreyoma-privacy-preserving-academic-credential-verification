@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import QRCode from 'qrcode';
 import { connectWallet, getAcademicContract, getOwnedTokenIds, resolveRole, ROLES, bytes32ToDecimal } from '../../utils/web3';
 import { decryptCredential as decryptPayload } from '../../utils/crypto';
 import { generateCredentialProof, buildProofSharePackage } from '../../utils/zkp';
@@ -38,7 +37,7 @@ export default function StudentPortal() {
 
   const [proofPackage, setProofPackage] = useState(null);
   const [proofStatus, setProofStatus] = useState('');
-  const [qrCode, setQrCode] = useState('');
+  const [proofShareText, setProofShareText] = useState('');
   const [isBusy, setIsBusy] = useState(false);
 
   const hasTokens = tokens.length > 0;
@@ -103,7 +102,7 @@ export default function StudentPortal() {
       const bundle = await loadIpfsBundle(tokenCid);
       const ciphertext = bundle.encryptedPayload || bundle.ciphertext;
       if (!ciphertext) throw new Error('Invalid IPFS payload.');
-      const payload = decryptPayload(ciphertext, decryptionKey);
+      const payload = await decryptPayload(ciphertext, decryptionKey);
 
       const transcriptData = payload.transcriptData ?? payload.transcript_data;
       const secretSalt = payload.salt ?? payload.secretSalt;
@@ -127,18 +126,12 @@ export default function StudentPortal() {
       setProofPackage(pkg);
       setCidForToken(selectedTokenId, tokenCid);
 
-      const qrPayload = JSON.stringify(pkg);
-      try {
-        const qrUrl = await QRCode.toDataURL(qrPayload, { errorCorrectionLevel: "M" });
-        setQrCode(qrUrl);
-      } catch {
-        setQrCode('');
-      }
+      setProofShareText(JSON.stringify(pkg));
       setProofStatus(`✅ Proof generated for token ${selectedTokenId}.`);
     } catch (error) {
       setProofStatus(error.message || 'Proof generation failed.');
       setProofPackage(null);
-      setQrCode('');
+      setProofShareText('');
     } finally {
       setIsBusy(false);
     }
@@ -281,10 +274,29 @@ export default function StudentPortal() {
                 >
                   Download JSON Proof
                 </button>
-                {qrCode && <img src={qrCode} alt="Proof QR code" className="h-48 w-48 rounded-md border border-slate-600" />}
+                {proofShareText && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (proofShareText) {
+                        navigator.clipboard.writeText(proofShareText).catch(() => {});
+                      }
+                    }}
+                    className="rounded-md border border-slate-600 px-4 py-2"
+                  >
+                    Copy proof package text
+                  </button>
+                )}
               </div>
+              {proofShareText && (
+                <textarea
+                  value={proofShareText}
+                  readOnly
+                  className="mt-2 h-44 w-full rounded-md border border-slate-600 bg-slate-950 p-3 text-xs text-slate-200"
+                />
+              )}
               <p className="mt-2 text-xs text-slate-500">
-                Note: If QR does not render, share the downloaded JSON proof file.
+                Proof package is also available as downloaded JSON.
               </p>
             </div>
           )}
