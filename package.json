@@ -1,0 +1,29 @@
+{
+  "name": "fyp-credential-system",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "npx hardhat node",
+    "test": "npx hardhat test",
+    "compile": "npx hardhat compile",
+    "deploy:local": "npx hardhat run scripts/deploy.js --network localhost"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
+    "hardhat": "^2.22.17",
+    "hardhat-gas-reporter": "^2.3.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0",
+    "circomlib": "^2.0.5",
+    "circomlibjs": "^0.1.7",
+    "dotenv": "^17.2.3",
+    "pinata-web3": "^0.5.4",
+    "snarkjs": "^0.7.5"
+  }
+}
