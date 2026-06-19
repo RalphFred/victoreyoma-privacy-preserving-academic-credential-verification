@@ -1,6 +1,7 @@
 [build]
   base = "frontend"
-  command = "corepack pnpm run build"
+  install = "npm install --no-package-lock"
+  command = "npm run build"
   publish = ".next"
 
 [[plugins]]
