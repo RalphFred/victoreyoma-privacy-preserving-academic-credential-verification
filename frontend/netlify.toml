@@ -1,7 +1,7 @@
 [build]
   base = "frontend"
-  install = "corepack pnpm install --frozen-lockfile"
-  command = "corepack pnpm run build"
+  install = "npm install --no-package-lock"
+  command = "npm run build"
   publish = ".next"
 
 [[plugins]]
