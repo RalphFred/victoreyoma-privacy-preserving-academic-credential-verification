@@ -1,5 +1,6 @@
 [build]
   base = "frontend"
+  install = "corepack pnpm install --frozen-lockfile"
   command = "corepack pnpm run build"
   publish = ".next"
 
