@@ -16,10 +16,17 @@
     "frontend:start": "cd frontend && npm run start",
     "mvp:start": "bash scripts/run-mvp.sh"
   },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0",
+    "circomlib": "^2.0.5",
+    "circomlibjs": "^0.1.7",
+    "dotenv": "^17.2.3",
+    "pinata-web3": "^0.5.4",
+    "snarkjs": "^0.7.5"
+  },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^6.1.0",
-    "@openzeppelin/contracts": "^5.4.0",
-    "dotenv": "^17.2.3",
-    "hardhat": "^2.24.4"
+    "hardhat-gas-reporter": "^2.3.0",
+    "hardhat": "^2.22.17"
   }
 }
